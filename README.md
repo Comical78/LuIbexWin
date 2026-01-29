@@ -53,4 +53,4 @@ To make Lua use `lwindows` correctly:
 2. **Native Modules:**
    Copy `lwindows.dll` into your Lua native libraries folder (`package.cpath`).
 
-3. Make sure `package.path` and `package.cpath` include these directories so that `require "windows.h"` and `require "lwindows"` work properly.
+3. Make sure `package.path` and `package.cpath` include these directories so that `require "windows.h"` work properly.
