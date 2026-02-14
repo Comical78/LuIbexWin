@@ -6,7 +6,8 @@ static STARTUPINFOA table2STARTUPINFOA(lua_State* L, int index)
     STARTUPINFOA si;
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
-
+	if (lua_isnoneornil(L, index))
+        return si;
     lua_getfield(L, index, "cb");
     si.cb = (DWORD)luaL_optinteger(L, -1, si.cb);
     lua_pop(L, 1);
@@ -68,15 +69,15 @@ static STARTUPINFOA table2STARTUPINFOA(lua_State* L, int index)
     lua_pop(L, 1);
 
     lua_getfield(L, index, "hStdInput");
-    si.hStdInput = luaL_wingetbycheckudata(L, -1, HANDLE);
+    si.hStdInput = luaL_wingetbyudata(L, -1, HANDLE);
     lua_pop(L, 1);
 
     lua_getfield(L, index, "hStdOutput");
-    si.hStdOutput = luaL_wingetbycheckudata(L, -1, HANDLE);
+    si.hStdOutput = luaL_wingetbyudata(L, -1, HANDLE);
     lua_pop(L, 1);
 
     lua_getfield(L, index, "hStdError");
-    si.hStdError = luaL_wingetbycheckudata(L, -1, HANDLE);
+    si.hStdError = luaL_wingetbyudata(L, -1, HANDLE);
     lua_pop(L, 1);
 
     return si;
@@ -136,13 +137,13 @@ static void table_fillPROCESS_INFORMATION(lua_State* L, int index, const PROCESS
 
 Lua_Function(CreateProcess)
 {
-    LPCSTR lpApp = luaL_checkstring(L, 1);
+    LPCSTR lpApp = lua_tostring(L, 1);
     LPSTR lpCmd = (LPSTR)luaL_optstring(L, 2, nullptr);
     auto lpProcAttr = table2SECURITY_ATTRIBUTES(L, 3);
     auto lpThreadAttr = table2SECURITY_ATTRIBUTES(L, 4);
     BOOL inherit = lua_toboolean(L, 5);
     DWORD flags = (DWORD)luaL_checkinteger(L, 6);
-    LPVOID env = nullptr;
+    LPVOID env = lua_touserdata(L, 7);
     LPCSTR cwd = luaL_optstring(L, 8, nullptr);
     STARTUPINFOA si = table2STARTUPINFOA(L, 9);
     luaL_checktype(L, 10, LUA_TTABLE);

@@ -28,7 +28,15 @@ static T directReadMem(lua_State* L, T* value, const char* retType) {
     return ret;
 }
 
+static void crashError(lua_State* L, const char* funcName, const char* action, const uintptr_t& errcode)
+{
+    char buf[128];
+    _snprintf_s(buf, sizeof(buf), _TRUNCATE,
+        "%s: %s crashed (0x%llx)", funcName, action,
+        (unsigned long long)errcode);
+    luaL_error(L, "%s", buf);
 
+}
 static void makeDinamicStruct(lua_State* L, int tableIdx, size_t& size, std::vector<char>& buffer, std::vector<size_t>& sizes) {
     int tab = lua_absindex(L, tableIdx);
     size = 0;
@@ -210,7 +218,7 @@ Ret execFunc(lua_State* L, FARPROC func, std::variant<void*, lua_Number> args[16
     }
 
     if (!success) {
-        luaL_error(L, "Function call crashed (0x%llx)", exceptionCode);
+        crashError(L, "Addr2Val", "function call has", exceptionCode);
     }
 
     return result;
@@ -397,7 +405,16 @@ Lua_Function(Addr2Val)
             { "number",  [](lua_State* L, void* p) { lua_pushnumber(L, directReadMem<lua_Number>(L, (lua_Number*)p, "number")); } },
             { "num32", [](lua_State* L, void* p) { lua_pushnumber(L, (lua_Number)directReadMem<float>(L, (float*)p, "num32"));  }},
             { "boolean", [](lua_State* L, void* p) { lua_pushboolean(L, directReadMem<bool>(L, (bool*)p, "boolean")); } },
-            { "string",  [](lua_State* L, void* p) { lua_pushstring(L, (const char*)p); } },
+            { "string",  [](lua_State* L, void* p) { 
+                if (lua_isinteger(L, 3)) {
+                    lua_Integer size = lua_tointeger(L, 3);
+                    if (size > 0) {
+                        lua_pushlstring(L, (const char*)p, (size_t)size);
+                        return;
+                    }
+                }
+                lua_pushstring(L, (const char*)p);
+            } },
             { "userdata",[](lua_State* L, void* p) { pushUdataWithMetatable<void*>(L, "void", p); } },
             { "lightuserdata", [](lua_State* L, void* p) { lua_pushlightuserdata(L, p); } }
         };
@@ -412,16 +429,39 @@ Lua_Function(Addr2Val)
         return 1;
     }
 }
+static bool trymemcpy(void* dest, const void* src, size_t size, uintptr_t& code)
+{
+    bool suc = true;
+    __try {
+        memcpy(dest, src, size);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        code = GetExceptionCode();
+        suc = false;
+    };
+    return suc;
+}
+
 Lua_Function(CopyAddr)
 {
     size_t size = (size_t)luaL_checkinteger(L, 2);
     if (size == 0)
         return luaL_error(L, "CopyAddr: size must be > 0");
-
+    uintptr_t errcode = 0;
     int t = lua_type(L, 1);
     if (t == LUA_TSTRING)
     {
         const char* src = lua_tostring(L, 1);
+        if (lua_toboolean(L, 3))
+        {
+            void* dst = lua_newuserdata(L, size);
+            if (!trymemcpy(dst, src, size, errcode))
+            {
+                crashError(L, "CopyAddr", "Memory copy", errcode);
+            }
+            return 1;
+        }
         std::string buf(src, size);
         lua_pushlstring(L, buf.data(), buf.size());
         return 1;
@@ -430,8 +470,17 @@ Lua_Function(CopyAddr)
     if (t == LUA_TUSERDATA)
     {
         void* src = lua_touserdata(L, 1); 
+        if (lua_toboolean(L, 3))
+        {
+            std::string buf((char*)src, size);
+            lua_pushlstring(L, buf.data(), buf.size());
+            return 1;
+        }
         void* dst = lua_newuserdata(L, size);
-        memcpy(dst, src, size);
+        if (!trymemcpy(dst, src, size, errcode))
+        {
+            crashError(L, "CopyAddr", "Memory copy", errcode);
+        }
         return 1;
     }
 
@@ -439,7 +488,44 @@ Lua_Function(CopyAddr)
     return 1;
 }
 
+Lua_Function(WriteAddr)
+{
+    void* dst = lua_touserdata(L, 1);
+	int t = lua_type(L, 2);
+    uintptr_t errcode = 0;
+	if (t == LUA_TSTRING)
+    {
+        size_t len;
+        const char* src = lua_tolstring(L, 2, &len);
+        if (lua_isinteger(L, 3))
+            len = lua_tointeger(L, 3);
+        if (!trymemcpy(dst, src, len, errcode))
+        {
+            crashError(L, "WriteAddr", "Memory copy", errcode);
+        }
+        return 0;
+    }
+    else if (t == LUA_TUSERDATA)
+    {
+        void* src = lua_touserdata(L, 2);
+        size_t udsize = luaL_checkinteger(L, 3);
+        if (udsize == 0)
+			return luaL_error(L, "WriteAddr: size must be > 0");
+        if (!trymemcpy(dst, src, udsize, errcode))
+        {
+            crashError(L, "WriteAddr", "Memory copy", errcode);
+        }
+        return 0;
+	}
+    luaL_error(L, "WriteAddr: unsupported source type");
+	return 0;
+}
 
+Lua_Function(GetLuaStateAddr)
+{
+    lua_pushlightuserdata(L, L);
+    return 1;
+}
 
 Lua_Function(Addr2Struct)
 {
@@ -465,7 +551,7 @@ Lua_Function(Addr2Num)
 Lua_Function(VirtualQueryEx)
 {
     HANDLE hProcess = luaL_wingetbycheckudata(L, 1, HANDLE);
-    void* lpAddress = luaL_checklightuserdata(L, 2);
+    void* lpAddress = lua_touserdata(L, 2);
 
     MEMORY_BASIC_INFORMATION mbi;
     SIZE_T result = VirtualQueryEx(hProcess, lpAddress, &mbi, sizeof(mbi));
@@ -526,7 +612,7 @@ Lua_Function(CloseHandle)
 Lua_Function(ReadProcessMemory)
 {
     HANDLE hProcess = luaL_wingetbycheckudata(L, 1, HANDLE);
-    LPCVOID lpBaseAddress = luaL_checklightuserdata(L, 2);
+    LPCVOID lpBaseAddress = lua_touserdata(L, 2);
     SIZE_T nSize = (SIZE_T)luaL_checkinteger(L, 3);
 
     std::vector<char> buffer(nSize);
@@ -586,7 +672,7 @@ Lua_Function(CoTaskMemAlloc)
 }
 Lua_Function(CoTaskMemFree)
 {
-    void* ptr = luaL_checklightuserdata(L, 1);
+    void* ptr = lua_touserdata(L, 1);
     CoTaskMemFree(ptr);
     return 0;
 }

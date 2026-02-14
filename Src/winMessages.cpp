@@ -199,7 +199,7 @@ Lua_Function(ToWindowProc)
 }
 Lua_Function(CallWindowProc)
 {
-    WNDPROC winProc = (WNDPROC)luaL_checklightuserdata(L, 1);
+    WNDPROC winProc = (WNDPROC)lua_touserdata(L, 1);
     HWND hWnd = luaL_wingetbycheckudata(L, 2, HWND);
     UINT msg = (UINT)luaL_checkinteger(L, 3);
     WPARAM wParam = (WPARAM)luaL_checkinteger(L, 4);

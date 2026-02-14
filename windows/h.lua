@@ -11,6 +11,3 @@ function GetModuleHandle(mod)
 end
 Sleep = SleepEx
 DrawText = DrawTextEx
-function CreateDirectory(...)
-    return CreateDirectoryEx(nil, ...)
-end

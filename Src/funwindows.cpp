@@ -31,7 +31,7 @@ Lua_Function(CreateWindowEx)
 Lua_Function(ShowWindow)
 {
 
-    HWND hwnd = *(HWND*)luaL_checkuserdata(L, 1);
+    HWND hwnd = luaL_wingetbycheckudata(L, 1, HWND);
     int nCmdShow = (int)lua_tointeger(L, 2);
     BOOL res = ShowWindow(hwnd, nCmdShow);
     lua_pushboolean(L, res);
@@ -39,14 +39,14 @@ Lua_Function(ShowWindow)
 }
 Lua_Function(DestroyWindow)
 {
-    HWND hwnd = *(HWND*)luaL_checkuserdata(L, 1);
+    HWND hwnd = luaL_wingetbycheckudata(L, 1, HWND);
     BOOL res = DestroyWindow(hwnd);
     lua_pushboolean(L, res);
     return 1;
 }
 Lua_Function(UpdateWindow)
 {
-    HWND hwnd = *(HWND*)luaL_checkuserdata(L, 1);
+    HWND hwnd = luaL_wingetbycheckudata(L, 1, HWND);
     BOOL res = UpdateWindow(hwnd);
     lua_pushboolean(L, res);
     return 1;

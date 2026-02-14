@@ -5,7 +5,7 @@ It provides access to native functions, structures, messages, and system utiliti
 
 ### Compatibility
 Lua 5.3 and newer.
-
+64 bits only.
 ---
 
 ## Prerequisites
@@ -14,7 +14,7 @@ Before compiling and using `lwindows`, make sure you have:
 
 1. **CMake ≥ 3.16**  
 2. **Visual Studio** with C++ and MASM support  
-3. **Lua** installation (5.3 or newer)  
+3. **Lua** installation (5.3 or newer) and in x64
 4. Sufficient disk space (as `lwindows` exposes many functions and complex structures)
 
 ---

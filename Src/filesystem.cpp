@@ -1,27 +1,3 @@
-Lua_Function(CreateDirectoryEx)
-{
-    LPCSTR dirTemplate = lua_tostring(L, 1);
-    LPCSTR dirNew = luaL_checkstring(L, 2);
-    SECURITY_ATTRIBUTES sa_struct;
-    LPSECURITY_ATTRIBUTES sa = nullptr;
-
-    if (!lua_isnil(L, 3))
-    {
-        luaL_checktype(L, 3, LUA_TTABLE);
-        sa_struct = table2SECURITY_ATTRIBUTES(L, 3);
-        sa = &sa_struct;
-    }
-    bool result = CreateDirectoryExA(dirTemplate, dirNew, sa);
-    lua_pushboolean(L, result);
-    return 1;
-}
-Lua_Function(GetFileAttributes)
-{
-    LPCSTR filePath = luaL_checkstring(L, 1);
-    DWORD attributes = GetFileAttributesA(filePath);
-    lua_pushinteger(L, (lua_Integer)attributes);
-    return 1;
-}
 void register_filesystem(lua_State* L)
 {
     REGIMACRO(FILE_ATTRIBUTE_READONLY)

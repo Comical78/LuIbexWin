@@ -6,22 +6,20 @@ Lua_Function(LoadLibrary)
 }
 Lua_Function(FreeLibrary)
 {
-    HMODULE mod = *(HMODULE*)luaL_checkuserdata(L, 1);
+    HMODULE mod = luaL_wingetbycheckudata(L, 1, HMODULE);
     BOOL suc = FreeLibrary(mod);
     lua_pushboolean(L, suc);
     return 1;
 }
 Lua_Function(GetProcAddress)
 {
-    HMODULE hMod = *(HMODULE*)luaL_checkuserdata(L, 1);
+    HMODULE hMod = luaL_wingetbycheckudata(L, 1, HMODULE);
     const char* funcName = luaL_checkstring(L, 2);
 
     if (!hMod || !funcName)
         return luaL_error(L, "Invalid module handle or function name");
 
     FARPROC func = GetProcAddress(hMod, funcName);
-    if (!func)
-        return luaL_error(L, "Function '%s' not found in module", funcName);
     lua_pushlightuserdata(L, (void*)func);
     return 1;
 }
