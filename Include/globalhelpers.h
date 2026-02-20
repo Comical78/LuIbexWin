@@ -1,7 +1,11 @@
 #pragma once
 #define Lua_Function(name) int ll_##name(lua_State* L)
 #define luaL_wingetbycheckudata(L, idx, type) \
-    *(type*)luaL_checkuserdata(L, idx)
+(type)([](lua_State* L_, int i) -> void* {           \
+    void* p = lua_touserdata(L_, i);           \
+    if (!p) luaL_checktype(L_, i, LUA_TUSERDATA); \
+    return p;                            \
+})(L, idx)                                                        
 #define pushWindowStruct(L,clazz, val) lua_pushlightuserdata(L, val)
 #define INIT_LUAOPEN() extern "C" __declspec(dllexport) int luaopen_lwindows(lua_State* L){
 #define END_LUAOPEN() return 0;}
@@ -19,10 +23,7 @@
     (luaL_checktype(L, idx, LUA_TUSERDATA), lua_touserdata(L, idx))
 #define luaL_checklightuserdata(L, idx) \
     (luaL_checktype(L, idx, LUA_TLIGHTUSERDATA), lua_touserdata(L, idx))
-#define luaL_wingetbyudata(L, idx, type) ([](lua_State* L_, int i) -> type { \
-    void* p = lua_touserdata(L_, i);                                       \
-    return p ? *(type*)p : NULL;                                           \
-})(L, idx)
+#define luaL_wingetbyudata(L, idx, type) (type)lua_touserdata(L, idx);
 bool removeLWinProc(lua_State* L, lua_Integer i, const std::string& regName);
 bool getLWinProci(lua_State* L, lua_Integer i, const std::string& regName);
 int addLWinProc(lua_State* L, int index, const std::string& regName);
