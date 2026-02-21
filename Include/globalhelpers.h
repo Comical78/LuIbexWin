@@ -7,7 +7,7 @@
     return p;                            \
 })(L, idx)                                                        
 #define pushWindowStruct(L,clazz, val) lua_pushlightuserdata(L, val)
-#define INIT_LUAOPEN() extern "C" __declspec(dllexport) int luaopen_lwindows(lua_State* L){
+#define INIT_LUAOPEN() extern "C" __declspec(dllexport) int luaopen_luibexwin(lua_State* L){
 #define END_LUAOPEN() return 0;}
 #define REGSTRUCT(T) registerNewStruct(L, ##T##);
 #define REGVALUEMACRO(name,type) (lua_push##type(L, ##name##), lua_setglobal(L, #name));
